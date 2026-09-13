@@ -1,80 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b1020">
-  <meta name="description" content="AWAKEN — your real-life leveling system.">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <title>AWAKEN</title>
-</head>
-<body>
-  <main class="app">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">REAL-LIFE LEVELING SYSTEM</p>
-        <h1>AWAKEN</h1>
-        <p class="tagline">Become stronger. Sharper. Better.</p>
-      </div>
-      <button id="resetBtn" class="ghost" title="Reset all progress">↻</button>
-    </header>
-
-    <section class="player-card">
-      <div class="level-row">
-        <div>
-          <span class="muted">LEVEL</span>
-          <strong id="level">1</strong>
-        </div>
-        <div class="rank">
-          <span class="muted">RANK</span>
-          <strong id="rank">E</strong>
-        </div>
-        <div class="xp-total">
-          <span class="muted">TOTAL XP</span>
-          <strong id="totalXp">0</strong>
-        </div>
-      </div>
-      <div class="xp-bar"><div id="xpFill"></div></div>
-      <p id="xpText" class="xp-text">0 / 100 XP to next level</p>
-    </section>
-
-    <section>
-      <div class="section-head">
-        <h2>⚔️ Daily Quests</h2>
-        <span id="questCount" class="pill">0 / 0</span>
-      </div>
-      <div id="quests" class="quest-list"></div>
-    </section>
-
-    <section>
-      <div class="section-head">
-        <h2>📊 Character Stats</h2>
-      </div>
-      <div id="stats" class="stats-grid"></div>
-    </section>
-
-    <section class="boss-card">
-      <div>
-        <p class="eyebrow">DAILY BOSS</p>
-        <h2 id="bossName">The Avoided Task</h2>
-        <p id="bossDescription">Choose one small task you've been putting off.</p>
-      </div>
-      <button id="bossBtn" class="boss-btn">DEFEAT +30 XP</button>
-    </section>
-
-    <section class="rules">
-      <h2>🧠 AWAKEN Rules</h2>
-      <ul>
-        <li>No Zero Days — a tiny version still counts.</li>
-        <li>Missed quest = 0 XP, not self-punishment.</li>
-        <li>Protect sleep, food, recovery and your health.</li>
-        <li>Progress beats perfection.</li>
-      </ul>
-    </section>
-
-    <footer>AWAKEN V1 • Your journey starts here.</footer>
-  </main>
-  <script src="app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#070b12"><title>AWAKEN</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"></head><body>
+<header><div><small>REAL-LIFE LEVELING SYSTEM</small><h1>⚔️ AWAKEN</h1><p>Become stronger. Sharper. Better.</p></div><button id="reset">Reset</button></header>
+<main>
+<section class="card hero"><div class="level"><small>LVL</small><b id="level">1</b></div><div class="grow"><b>RANK <span id="rank">E</span></b><h2><span id="xp">0</span> XP</h2><div class="bar"><i id="bar"></i></div><small id="next">0 / 100 XP to next level</small></div></section>
+<section class="two"><section class="card"><div class="head"><h2>📜 Daily Quests</h2><span id="count">0/10</span></div><div id="quests"></div></section>
+<section class="card"><div class="head"><h2>👑 Daily Boss</h2><span>+30 XP</span></div><p>Defeat one task you've been avoiding.</p><button id="boss">⚔️ DEFEAT BOSS</button><small id="bossmsg"></small></section></section>
+<section class="card"><div class="head"><h2>📊 Character Stats</h2><span>10 attributes</span></div><div id="stats" class="stats"></div></section>
+<section class="card"><div class="head"><h2>🏆 Achievements</h2><span id="achcount">0/8</span></div><div id="ach" class="ach"></div></section>
+<section class="card"><div class="head"><h2>📅 Progress History</h2><span id="streak">0 day streak</span></div><div id="history" class="history"></div></section>
+<section class="card"><b>🧠 No Zero Days</b><p>Even the smallest action keeps the system alive.</p></section>
+</main><div id="toast"></div><script src="app.js"></script></body></html>
