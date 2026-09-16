@@ -1,94 +1,186 @@
-const Q=[["Train",20,"STR"],["Meditate",10,"MND"],["Study",15,"INT"],["Spanish",10,"LAN"],["Spirit",10,"SPI"],["Cybersecurity",20,"TEC"],["Create",10,"CRE"],["Practical Skill",10,"PRA"],["Wealth",10,"WLT"],["Communication",10,"COM"]];
-const N={STR:"Strength",MND:"Mind",INT:"Intelligence",TEC:"Technology",LAN:"Language",SPI:"Spirit",WLT:"Wealth",PRA:"Practical",COM:"Communication",CRE:"Creativity"};
-const titles=[[1,"Awakened Beginner"],[6,"Disciplined Learner"],[11,"Rising Adventurer"],[21,"Skilled Builder"],[31,"Elite Learner"],[41,"Master Candidate"],[51,"Awakened Master"]];
+const KEY="awaken_max_v1",OLD=["awaken_v5","awaken_v2"];
+const STATS=["Strength","Discipline","Knowledge","Spirit","Language","Cyber","Creation","Practical","Wealth","Communication"];
+const QUESTS=[
+["Train","Strength",20],["Meditate","Spirit",10],["Study","Knowledge",15],["Spanish","Language",10],
+["Spirit","Spirit",10],["Cybersecurity","Cyber",20],["Create","Creation",10],["Practical Skill","Practical",10],
+["Wealth","Wealth",10],["Communication","Communication",10]
+];
 const ACH=[
-["✦","First Awakening","Complete your first quest",s=>s.xp>=10],
-["100","Century","Reach 100 XP",s=>s.xp>=100],
-["★","Challenge Accepted","Complete a daily challenge",s=>s.bosses>0],
-["◈","Weekly Warrior","Complete a weekly boss",s=>s.weeklyBosses>0],
-["📚","Scholar","Complete Study 10 times",s=>(s.stats.INT||0)>=10],
-["🌎","Polyglot","Complete Spanish 10 times",s=>(s.stats.LAN||0)>=10],
-["◉","Cyber Initiate","Complete Cybersecurity 10 times",s=>(s.stats.TEC||0)>=10],
-["🔥","Three-Day Flame","Reach a 3-day streak",s=>getStreak(s)>=3],
-["🏆","Level 5","Reach level 5",s=>s.level>=5],
-["⚡","Level 10","Reach level 10",s=>s.level>=10],
-["♛","S-Rank Path","Reach level 31",s=>s.level>=31],
-["∞","Long Run","Reach a 7-day streak",s=>getStreak(s)>=7]
-];
-const WEEKLY=[
-"Finish one meaningful task you have been postponing.",
-"Complete three learning sessions this week.",
-"Do one practical task that improves your environment.",
-"Complete a workout and one recovery habit on the same day.",
-"Create something from scratch and finish it."
-];
-const DEFAULT_REWARDS=[
-{id:1,name:"30 minutes of guilt-free gaming",cost:50},
-{id:2,name:"Watch one episode of a show",cost:80},
-{id:3,name:"Favorite snack",cost:100},
-{id:4,name:"One relaxed evening",cost:150}
+["first","First Spark",s=>s.totalXP>0],["streak3","3-Day Streak",s=>s.streak>=3],
+["streak7","7-Day Streak",s=>s.streak>=7],["level5","Level 5",s=>s.level>=5],
+["level10","Level 10",s=>s.level>=10],["stat10","Stat Online",s=>Math.max(...Object.values(s.stats))>=10],
+["sweep","Full Sweep",s=>Object.values(s.today).filter(Boolean).length>=10],["boss","Boss Clear",s=>s.bossesCleared>0],
+["goal","Mission Complete",s=>s.goals.some(g=>g.done)],["coins","Coin Stack",s=>s.coins>=100],
+["backup","Backup Ready",s=>s.backedUp],["creator","Creator Mode",s=>s.logs.creation>=5]
 ];
 const today=()=>new Date().toISOString().slice(0,10);
-const weekKey=()=>{let d=new Date();let jan=new Date(d.getFullYear(),0,1);return `${d.getFullYear()}-W${Math.ceil((((d-jan)/86400000)+jan.getDay()+1)/7)}`};
-const fresh=()=>({version:5,xp:0,level:1,done:{},bosses:0,weeklyBosses:0,stats:Object.fromEntries(Object.keys(N).map(k=>[k,0])),history:{},coins:0,goals:[],rewards:DEFAULT_REWARDS,unlocked:[]});
-let s=JSON.parse(localStorage.getItem("awaken_v5")||"null");
-if(!s){const old=JSON.parse(localStorage.getItem("awaken_v2")||"null");s=old?migrate(old):fresh();}
-function migrate(o){let n=fresh();Object.assign(n,o);n.version=5;n.coins=Math.floor((o.xp||0)/25);n.weeklyBosses=0;n.goals=[];n.rewards=DEFAULT_REWARDS;n.unlocked=[];return n}
-function save(){localStorage.setItem("awaken_v5",JSON.stringify(s))}
-function level(){return Math.floor(s.xp/100)+1}
-function rank(l){return l>=51?"SS":l>=41?"S":l>=31?"A":l>=21?"B":l>=11?"C":l>=6?"D":"E"}
-function title(l){let t=titles[0][1];for(const x of titles)if(l>=x[0])t=x[1];return t}
-function getStreak(st){let count=0,d=new Date();while(st.history[d.toISOString().slice(0,10)]?.xp>0){count++;d.setDate(d.getDate()-1);if(count>365)break}return count}
-function weekBossDone(){return !!s.history[weekKey()]?.weekly}
-function toast(t){const e=document.querySelector("#toast");e.textContent=t;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),1600)}
+const week=()=>{let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toISOString().slice(0,10)};
+const month=()=>new Date().toISOString().slice(0,7);
+function base(){
+return{
+name:"Player",level:1,xp:0,totalXP:0,rank:"E",coins:0,streak:0,lastActive:null,bossesCleared:0,backedUp:false,
+stats:Object.fromEntries(STATS.map(x=>[x,1])),questDay:today(),today:{},history:{},
+achievements:{},goals:[{id:1,title:"Build a strong daily foundation",note:"Train, study, reflect, and keep learning.",done:false}],
+daily:{date:today(),done:false},weekly:{week:week(),done:false},monthly:{month:month(),done:false},
+logs:{workout:0,creation:0,spanish:0,study:0},wellbeing:{sleep:null,energy:null,water:0},rewards:[],custom:[]
+}}
+function merge(s){
+let b=base(),o={...b,...(s||{}),
+stats:{...b.stats,...((s||{}).stats||{})},logs:{...b.logs,...((s||{}).logs||{})},
+wellbeing:{...b.wellbeing,...((s||{}).wellbeing||{})},
+goals:Array.isArray(s?.goals)?s.goals:b.goals,rewards:Array.isArray(s?.rewards)?s.rewards:[],
+custom:Array.isArray(s?.custom)?s.custom:[]
+};
+if(o.questDay!==today()){o.questDay=today();o.today={}}
+if(o.daily.date!==today())o.daily={date:today(),done:false}
+if(o.weekly.week!==week())o.weekly={week:week(),done:false}
+if(o.monthly.month!==month())o.monthly={month:month(),done:false}
+return o
+}
+function load(){
+let r=localStorage.getItem(KEY);
+if(r)try{return merge(JSON.parse(r))}catch(e){}
+for(const k of OLD){r=localStorage.getItem(k);if(r)try{return merge(JSON.parse(r))}catch(e){}}
+return base()
+}
+let S=load(),page="home";
+function save(s=S){localStorage.setItem(KEY,JSON.stringify(s))}
+function need(){return 100+(S.level-1)*40}
+function rank(){return S.level>=30?"SS":S.level>=20?"S":S.level>=14?"A":S.level>=9?"B":S.level>=5?"C":S.level>=2?"D":"E"}
+function toast(x){let e=document.getElementById("toast");e.textContent=x;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1800)}
+function touch(){
+if(S.lastActive!==today()){
+if(S.lastActive){let d=new Date();d.setDate(d.getDate()-1);S.streak=S.lastActive===d.toISOString().slice(0,10)?S.streak+1:1}
+else S.streak=1;
+S.lastActive=today()
+}}
+function xp(n,why){
+touch();S.xp+=n;S.totalXP+=n;S.coins+=Math.max(1,Math.floor(n/10));
+while(S.xp>=need()){S.xp-=need();S.level++}
+S.rank=rank();toast("+"+n+" XP • "+why);save();check();render()
+}
+function quest(i){
+let q=QUESTS[i];if(S.today[q[0]])return toast("Already completed.");
+S.today[q[0]]=true;S.stats[q[1]]++;xp(q[2],q[0])
+}
+function boss(t){
+let x=t==="daily"?S.daily:t==="weekly"?S.weekly:S.monthly;
+if(x.done)return toast("Already cleared.");
+x.done=true;S.bossesCleared++;xp(t==="daily"?30:t==="weekly"?100:200,t+" boss")
+}
+function check(){for(const [id,name,fn] of ACH)if(!S.achievements[id]&&fn(S))S.achievements[id]=today()}
+function modal(h){document.getElementById("modal").innerHTML='<div class="modalBox">'+h+"</div>";document.getElementById("modal").classList.remove("hidden")}
+function close(){document.getElementById("modal").classList.add("hidden")}
+function custom(){
+modal('<h2>Custom Quest</h2><div class="grid"><div class="field"><label>Name</label><input id="cn"></div><div class="field"><label>Stat</label><select id="cs">'+STATS.map(x=>`<option>${x}</option>`).join("")+'</select></div><div class="field"><label>XP</label><input id="cx" type="number" min="5" max="100" value="15"></div><div class="row"><button class="btn ghost" data-action="close">Cancel</button><button class="btn primary" data-action="saveCustom">Create</button></div></div>')
+}
+function saveCustom(){
+let n=document.getElementById("cn").value.trim();if(!n)return toast("Name the quest.");
+S.custom.push({id:Date.now(),name:n,stat:document.getElementById("cs").value,xp:Math.min(100,Math.max(5,+document.getElementById("cx").value||15)),done:false,day:today()});
+save();close();render()
+}
+function completeCustom(id){
+let q=S.custom.find(x=>x.id===id&&x.day===today());if(!q||q.done)return;
+q.done=true;S.stats[q.stat]++;xp(q.xp,q.name)
+}
+function goalModal(){
+modal('<h2>New Mission</h2><div class="grid"><div class="field"><label>Mission</label><input id="gt"></div><div class="field"><label>Why it matters</label><textarea id="gn" rows="3"></textarea></div><div class="row"><button class="btn ghost" data-action="close">Cancel</button><button class="btn primary" data-action="saveGoal">Add</button></div></div>')
+}
+function saveGoal(){
+let t=document.getElementById("gt").value.trim();if(!t)return toast("Name the mission.");
+S.goals.push({id:Date.now(),title:t,note:document.getElementById("gn").value.trim(),done:false});
+save();close();render()
+}
+function goal(id){let g=S.goals.find(x=>x.id===id);if(!g||g.done)return;g.done=true;xp(50,"Mission Complete")}
+function profile(){
+modal('<h2>Profile</h2><div class="grid"><div class="field"><label>Display name</label><input id="pn" value="'+(S.name||"Player").replace(/"/g,"&quot;")+'"></div><div class="row"><button class="btn ghost" data-action="close">Cancel</button><button class="btn primary" data-action="saveProfile">Save</button></div></div>')
+}
+function saveProfile(){S.name=document.getElementById("pn").value.trim()||"Player";save();close();render()}
+function wellbeing(){
+modal('<h2>Wellbeing Log</h2><p class="muted">Reflection only — nothing here is a target or requirement.</p><div class="grid"><div class="field"><label>Sleep hours</label><input id="sl" type="number" min="0" max="24" step=".5"></div><div class="field"><label>Energy 1–5</label><input id="en" type="number" min="1" max="5"></div><div class="field"><label>Water cups</label><input id="wa" type="number" min="0" max="30"></div><button class="btn primary" data-action="saveWellbeing">Save</button></div>')
+}
+function saveWellbeing(){
+S.wellbeing={sleep:+document.getElementById("sl").value||null,energy:+document.getElementById("en").value||null,water:+document.getElementById("wa").value||0};
+save();close();render();toast("Saved")
+}
+function log(t){
+S.logs[t]++;let st=t==="creation"?"Creation":t==="spanish"?"Language":t==="study"?"Knowledge":"Strength";
+S.stats[st]++;xp(t==="workout"?15:10,t)
+}
+function shop(){
+let items=[["Quiet hour",30],["New notebook",50],["Art session",40],["Small outing",80]];
+modal("<h2>Reward Shop</h2><p class='muted'>Choose safe, realistic rewards for yourself.</p><div class='list'>"+
+items.map(x=>`<div class="listItem row"><b>${x[0]}</b><button class="btn primary" data-action="buy" data-name="${x[0]}" data-cost="${x[1]}">${x[1]} ◇</button></div>`).join("")+
+"</div>")
+}
+function buy(n,c){
+if(S.coins<c)return toast("Not enough coins.");
+S.coins-=c;S.rewards.unshift({name:n,cost:c,date:today()});save();close();render();toast("Reward unlocked")
+}
+function exportData(){
+S.backedUp=true;save();check();
+let a=document.createElement("a"),u=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));
+a.href=u;a.download="awaken-max-backup-"+today()+".json";a.click();URL.revokeObjectURL(u);toast("Backup exported")
+}
+function importData(){
+let i=document.createElement("input");i.type="file";i.accept=".json";
+i.onchange=async()=>{try{S=merge(JSON.parse(await i.files[0].text()));save();render();toast("Backup restored")}catch(e){toast("Invalid backup")}};
+i.click()
+}
+function reset(){if(confirm("Reset AWAKEN MAX? Make sure you have a backup first.")){S=base();save();render()}}
+function voice(){
+if(!window.speechSynthesis)return toast("Voice unavailable");
+speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(document.getElementById("screen").innerText.slice(0,1500)))
+}
+function home(){
+let qs=QUESTS.map((q,i)=>`<div class="listItem quest ${S.today[q[0]]?"done":""}"><div><b class="questName">${q[0]}</b><div class="questMeta">+${q[2]} XP • ${q[1]}</div></div><button class="btn ${S.today[q[0]]?"ghost":"primary"}" data-action="quest" data-i="${i}">${S.today[q[0]]?"✓":"Clear"}</button></div>`).join("");
+let cs=S.custom.filter(q=>q.day===today()).map(q=>`<div class="listItem quest ${q.done?"done":""}"><div><b>${q.name}</b><div class="questMeta">+${q.xp} XP • ${q.stat}</div></div><button class="btn primary" data-action="customQuest" data-id="${q.id}">${q.done?"✓":"Clear"}</button></div>`).join("");
+return `<div class="grid">
+<section class="card hero"><div class="row"><div><div class="rank">${S.rank}-RANK</div><div class="statBig">LEVEL ${S.level}</div><div class="muted">${S.xp}/${need()} XP to next level</div></div><b>✦</b></div><div class="xpbar" style="margin-top:12px"><i style="width:${Math.min(100,S.xp/need()*100)}%"></i></div><div class="row wrap" style="margin-top:12px"><span class="pill">🔥 ${S.streak} day streak</span><span class="pill">◇ ${S.coins}</span><span class="pill">${S.totalXP} total XP</span></div></section>
+<div class="grid two"><div class="card"><div class="label">Daily</div><div class="kpi">${Object.values(S.today).filter(Boolean).length}/10</div></div><div class="card"><div class="label">Bosses</div><div class="kpi">${S.bossesCleared}</div></div></div>
+<section class="card"><h2>⚔️ Challenges</h2><div class="grid three" style="margin-top:12px"><button class="btn primary" data-action="boss" data-type="daily">Daily +30</button><button class="btn primary" data-action="boss" data-type="weekly">Weekly +100</button><button class="btn primary" data-action="boss" data-type="monthly">Monthly +200</button></div></section>
+<section><div class="row sectionTitle"><span>DAILY QUESTS</span><button class="btn ghost" data-action="custom">＋ Custom</button></div><div class="list">${qs}${cs}</div></section>
+</div>`
+}
+function character(){
+return `<div class="grid"><section class="card hero"><div class="row"><div><div class="rank">${S.rank}-RANK CHARACTER</div><div class="statBig">${S.name}</div><div class="muted">Level ${S.level} • ${S.totalXP} XP</div></div><button class="btn ghost" data-action="profile">Edit</button></div></section>
+<section class="card"><h2>Character Stats</h2>${STATS.map(x=>`<div class="barRow"><span>${x}</span><div class="bar"><i style="width:${Math.min(100,S.stats[x]*5)}%"></i></div><span>${S.stats[x]}</span></div>`).join("")}</section>
+<section class="card"><h2>Lifetime Logs</h2><div class="grid two" style="margin-top:10px">${Object.entries(S.logs).map(x=>`<div class="listItem"><div class="label">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join("")}</div></section></div>`
+}
+function progress(){
+let a=[];for(let i=13;i>=0;i--){let d=new Date();d.setDate(d.getDate()-i);let k=d.toISOString().slice(0,10);a.push([k,S.history[k]?.xp||0])}
+let mx=Math.max(20,...a.map(x=>x[1]));
+return `<div class="grid"><section class="card"><h2>📈 14-Day History</h2><div class="history" style="margin-top:15px">${a.map(x=>`<div class="dayCol"><div class="dayBar" style="--h:${Math.max(4,x[1]/mx*90)}px"></div><small>${x[0].slice(8)}</small></div>`).join("")}</div></section>
+<section class="card"><h2>Achievements</h2><div class="grid two" style="margin-top:12px">${ACH.map(x=>`<div class="listItem" style="opacity:${S.achievements[x[0]]?1:.45}"><b>${S.achievements[x[0]]?"🏆":"◇"} ${x[1]}</b><div class="small">${S.achievements[x[0]]?"Unlocked":"Locked"}</div></div>`).join("")}</div></section></div>`
+}
+function rewards(){
+return `<div class="grid"><section class="card hero"><div class="label">AWAKEN COINS</div><div class="statBig">◇ ${S.coins}</div><button class="btn primary" data-action="shop" style="margin-top:12px">Reward Shop</button></section>
+<section class="card"><h2>Recent Rewards</h2><div class="list" style="margin-top:10px">${S.rewards.slice(0,8).map(x=>`<div class="listItem row"><span>${x.name}</span><span class="small">${x.cost} ◇</span></div>`).join("")||'<div class="small">None yet.</div>'}</div></section></div>`
+}
+function more(){
+return `<div class="grid"><section class="card"><div class="row"><h2>🎯 Missions</h2><button class="btn primary" data-action="newGoal">＋ Mission</button></div><div class="list" style="margin-top:10px">${S.goals.map(g=>`<div class="listItem row"><div><b>${g.title}</b><div class="small">${g.note||""}</div></div><button class="btn ${g.done?"ghost":"primary"}" data-action="goal" data-id="${g.id}">${g.done?"✓":"Complete"}</button></div>`).join("")}</div></section>
+<section class="card"><h2>🧠 Quick Logs</h2><div class="grid two" style="margin-top:10px"><button class="btn primary" data-action="log" data-type="workout">＋ Workout</button><button class="btn primary" data-action="log" data-type="study">＋ Study</button><button class="btn primary" data-action="log" data-type="spanish">＋ Spanish</button><button class="btn primary" data-action="log" data-type="creation">＋ Create</button><button class="btn ghost" data-action="wellbeing">☼ Wellbeing</button></div></section>
+<section class="card"><h2>⚙️ System</h2><div class="list" style="margin-top:10px"><button class="btn primary" data-action="export">Export Backup</button><button class="btn ghost" data-action="import">Import Backup</button><button class="btn danger" data-action="reset">Reset</button></div><div class="small notice" style="margin-top:12px">AWAKEN MAX v1 • local-first • offline-ready. Your progress stays in this browser unless you export it.</div></section></div>`
+}
 function render(){
- s.level=level();
- const inside=s.xp%100,l=s.level;
- document.querySelector("#level").textContent=l;document.querySelector("#rank").textContent=rank(l);document.querySelector("#xp").textContent=s.xp;
- document.querySelector("#bar").style.width=inside+"%";document.querySelector("#next").textContent=`${inside} / 100 XP to next level`;
- document.querySelector("#title").textContent=title(l);document.querySelector("#charTitle").textContent=title(l);document.querySelector("#charLevel").textContent=l;document.querySelector("#charRank").textContent=rank(l);
- document.querySelector("#coins").textContent=s.coins;document.querySelector("#shopCoins").textContent=s.coins;document.querySelector("#streak").textContent=getStreak(s);document.querySelector("#percent").textContent=Math.round(Q.filter(q=>(s.done[today()]||{})[q[0]]).length/Q.length*100)+"%";
- const d=s.done[today()]||{};const c=Q.filter(q=>d[q[0]]).length;document.querySelector("#count").textContent=`${c}/10`;
- document.querySelector("#quests").innerHTML=Q.map(q=>`<div class="quest ${d[q[0]]?"done":""}" onclick="doQuest('${q[0]}')"><span class="check">${d[q[0]]?"✓":""}</span><span class="name">${q[0]}</span><span class="xp">+${q[1]} XP</span></div>`).join("");
- const bd=s.history[today()]?.boss;const boss=document.querySelector("#boss");boss.disabled=!!bd;boss.textContent=bd?"CHALLENGE COMPLETE":"COMPLETE CHALLENGE";document.querySelector("#bossmsg").textContent=bd?"Today's challenge is complete.":"";
- const wi=weekKey(),wd=weekBossDone();document.querySelector("#weeklyText").textContent=WEEKLY[new Date().getDay()%WEEKLY.length];const wb=document.querySelector("#weeklyBoss");wb.disabled=wd;wb.textContent=wd?"WEEKLY BOSS COMPLETE":"DEFEAT WEEKLY BOSS";document.querySelector("#weeklyMsg").textContent=wd?"This week's boss is complete.":"";
- document.querySelector("#stats").innerHTML=Object.entries(N).map(([k,n])=>{let v=s.stats[k]||0;return `<div class="stat"><div class="statrow"><span>${n}</span><span>${v}</span></div><div class="statbar"><i style="width:${Math.min(100,v*4)}%"></i></div></div>`}).join("");
- const ac=ACH.filter(a=>a[3](s)).length;document.querySelector("#achCount").textContent=ac;document.querySelector("#achCount2").textContent=`${ac}/${ACH.length}`;
- document.querySelector("#ach").innerHTML=ACH.map(a=>`<div class="achievement ${a[3](s)?"":"locked"}"><div class="icon">${a[0]}</div><b>${a[1]}</b><small>${a[3](s)?"Unlocked":a[2]}</small></div>`).join("");
- renderHistory();renderGoals();renderRewards();
+S=merge(S);
+S.history[today()]={xp:S.totalXP,quests:Object.values(S.today).filter(Boolean).length};
+save();
+document.getElementById("greeting").textContent=(S.name||"Player")+" // "+(page==="home"?"Command Center":page[0].toUpperCase()+page.slice(1));
+document.getElementById("dateLine").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short",year:"numeric"});
+document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("active",x.dataset.nav===page));
+document.getElementById("screen").innerHTML=page==="home"?home():page==="character"?character():page==="progress"?progress():page==="rewards"?rewards():more();
 }
-function renderHistory(){
- const days=[];for(let i=29;i>=0;i--){let d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10))}
- document.querySelector("#history").innerHTML=days.map(k=>`<div class="day"><div class="daybar"><i style="height:${Math.min(100,s.history[k]?.xp||0)}%"></i></div><small>${k.slice(5)}</small></div>`).join("");
- const entries=Object.entries(s.done).sort((a,b)=>b[0].localeCompare(a[0]));let total=0;let html="";
- for(const [date,done] of entries.slice(0,14)){const names=Object.keys(done).filter(k=>done[k]);total+=names.length;html+=`<div class="history-item"><span>${date}</span><b>${names.length} quests</b></div>`}
- document.querySelector("#historySummary").textContent=`${total} completed`;
- document.querySelector("#questHistory").innerHTML=html||`<div class="history-item"><span>No completed quests yet.</span></div>`;
-}
-function renderGoals(){
- const g=document.querySelector("#goals");if(!s.goals.length){g.innerHTML=`<p class="muted">Add a goal you want AWAKEN to help you build.</p>`;return}
- g.innerHTML=s.goals.map((x,i)=>`<div class="history-item"><span>${x}</span><button class="smallbtn" onclick="removeGoal(${i})">Done</button></div>`).join("");
-}
-function renderRewards(){
- document.querySelector("#rewardsList").innerHTML=s.rewards.map(r=>`<div class="reward"><b>${r.name}</b><small>${r.cost} coins</small><button onclick="buyReward(${r.id})" ${s.coins<r.cost?"disabled":""}>Redeem</button></div>`).join("");
- document.querySelector("#unlockedCount").textContent=s.unlocked.length;
- document.querySelector("#unlocked").innerHTML=s.unlocked.length?s.unlocked.map(x=>`<div class="history-item"><span>${x.name}</span><small>${x.date}</small></div>`).join(""):`<p class="muted">No rewards redeemed yet.</p>`;
-}
-function doQuest(name){
- const d=s.done[today()]||{};if(d[name])return;
- const q=Q.find(x=>x[0]===name);s.done[today()]={...d,[name]:true};s.xp+=q[1];s.coins+=Math.max(1,Math.floor(q[1]/5));s.stats[q[2]]++;
- s.history[today()]??={xp:0,boss:false,weekly:false};s.history[today()].xp+=q[1];
- save();render();toast(`+${q[1]} XP • +${Math.max(1,Math.floor(q[1]/5))} coin`);
-}
-document.querySelector("#boss").onclick=()=>{s.history[today()]??={xp:0,boss:false,weekly:false};if(s.history[today()].boss)return;s.history[today()].boss=true;s.history[today()].xp+=30;s.xp+=30;s.coins+=6;s.bosses++;save();render();toast("+30 XP • Daily challenge complete")};
-document.querySelector("#weeklyBoss").onclick=()=>{if(weekBossDone())return;s.history[weekKey()]??={xp:0,boss:false,weekly:false};s.history[weekKey()].weekly=true;s.xp+=100;s.coins+=20;s.weeklyBosses++;save();render();toast("+100 XP • Weekly boss defeated")};
-document.querySelector("#addGoal").onclick=()=>{const g=prompt("Enter a personal goal:");if(g?.trim()){s.goals.push(g.trim());save();render();toast("Goal added")}};
-window.removeGoal=i=>{s.goals.splice(i,1);save();render();toast("Goal completed")};
-document.querySelector("#addReward").onclick=()=>{const n=prompt("Reward name:");if(!n?.trim())return;const c=parseInt(prompt("Coin cost (example: 100):"),10);if(!Number.isFinite(c)||c<1)return;s.rewards.push({id:Date.now(),name:n.trim(),cost:c});save();render();toast("Reward added")};
-window.buyReward=id=>{const r=s.rewards.find(x=>x.id===id);if(!r||s.coins<r.cost)return;s.coins-=r.cost;s.unlocked.unshift({name:r.name,date:today()});save();render();toast("Reward redeemed ★")};
-document.querySelector("#exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(s,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`awaken-v5-backup-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast("Backup exported")};
-document.querySelector("#importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x||typeof x.xp!=="number"||!x.stats)throw 0;s=x;s.version=5;save();render();toast("Progress restored")}catch{toast("That backup is not valid")}};r.readAsText(f)};
-document.querySelector("#reset").onclick=()=>{if(confirm("Reset all AWAKEN progress? This cannot be undone unless you exported a backup.")){s=fresh();save();render();toast("AWAKEN reset")}};
-document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".navbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));document.querySelector("#"+b.dataset.screen).classList.add("active");window.scrollTo(0,0)});
-if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
-render();
+document.addEventListener("click",e=>{
+let n=e.target.closest("[data-nav]");if(n){page=n.dataset.nav;render();return}
+let a=e.target.closest("[data-action]");if(!a)return;
+let x=a.dataset.action;
+if(x==="quest")quest(+a.dataset.i);else if(x==="boss")boss(a.dataset.type);else if(x==="custom")custom();else if(x==="saveCustom")saveCustom();
+else if(x==="customQuest")completeCustom(+a.dataset.id);else if(x==="newGoal")goalModal();else if(x==="saveGoal")saveGoal();
+else if(x==="goal")goal(+a.dataset.id);else if(x==="profile")profile();else if(x==="saveProfile")saveProfile();
+else if(x==="wellbeing")wellbeing();else if(x==="saveWellbeing")saveWellbeing();else if(x==="log")log(a.dataset.type);
+else if(x==="shop")shop();else if(x==="buy")buy(a.dataset.name,+a.dataset.cost);else if(x==="export")exportData();
+else if(x==="import")importData();else if(x==="reset")reset();else if(x==="close")close();else if(x==="voice")voice();
+});
+if("serviceWorker"in navigator)navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+check();save();render();

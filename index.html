@@ -4,133 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070b12">
-<meta name="description" content="AWAKEN — a real-life leveling system for skills, discipline, fitness and personal growth">
+<meta name="description" content="AWAKEN MAX — a private life progression system">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.svg">
 <link rel="stylesheet" href="style.css">
-<title>AWAKEN V5</title>
+<title>AWAKEN MAX</title>
 </head>
 <body>
+<div id="app">
 <header class="topbar">
   <div>
-    <small>REAL-LIFE LEVELING SYSTEM</small>
-    <h1>✦ AWAKEN</h1>
-    <p>Become stronger. Sharper. Better.</p>
+    <div class="eyebrow">AWAKEN // MAX</div>
+    <h1 id="greeting">Command Center</h1>
+    <div class="muted" id="dateLine"></div>
   </div>
-  <button class="ghost" id="reset">Reset</button>
+  <button class="iconBtn" data-action="voice" aria-label="Read screen aloud">◉</button>
 </header>
-
-<main>
-  <section id="home" class="screen active">
-    <section class="card hero">
-      <div class="level"><small>LVL</small><b id="level">1</b></div>
-      <div class="grow">
-        <div class="rankline"><b>RANK <span id="rank">E</span></b><span id="title">Awakened Beginner</span></div>
-        <h2><span id="xp">0</span> XP</h2>
-        <div class="bar"><i id="bar"></i></div>
-        <small id="next">0 / 100 XP to next level</small>
-      </div>
-    </section>
-
-    <section class="quick-grid">
-      <div class="mini card"><small>COINS</small><b id="coins">0</b></div>
-      <div class="mini card"><small>STREAK</small><b id="streak">0</b></div>
-      <div class="mini card"><small>TODAY</small><b id="percent">0%</b></div>
-      <div class="mini card"><small>ACHIEVEMENTS</small><b id="achCount">0</b></div>
-    </section>
-
-    <section class="two">
-      <section class="card">
-        <div class="head"><h2>Daily Quests</h2><span id="count">0/10</span></div>
-        <div id="quests"></div>
-      </section>
-      <section class="card">
-        <div class="head"><h2>Daily Challenge</h2><span>+30 XP</span></div>
-        <p id="dailyChallengeText">Complete one meaningful task you've been avoiding.</p>
-        <button class="primary" id="boss">COMPLETE CHALLENGE</button>
-        <small id="bossmsg"></small>
-      </section>
-    </section>
-
-    <section class="card">
-      <div class="head"><h2>Weekly Boss</h2><span>+100 XP</span></div>
-      <p id="weeklyText">Loading challenge…</p>
-      <button class="primary" id="weeklyBoss">DEFEAT WEEKLY BOSS</button>
-      <small id="weeklyMsg"></small>
-    </section>
-
-    <section class="card">
-      <div class="head"><h2>Personal Goals</h2><button class="smallbtn" id="addGoal">+ Goal</button></div>
-      <div id="goals"></div>
-    </section>
-  </section>
-
-  <section id="character" class="screen">
-    <section class="card profile">
-      <div class="avatar">✦</div>
-      <div><small>CHARACTER PROFILE</small><h2 id="charTitle">Awakened Beginner</h2><p>Level <span id="charLevel">1</span> • Rank <span id="charRank">E</span></p></div>
-    </section>
-    <section class="card">
-      <div class="head"><h2>Character Stats</h2><span>10 attributes</span></div>
-      <div id="stats" class="stats"></div>
-    </section>
-    <section class="card">
-      <div class="head"><h2>Achievements</h2><span id="achCount2">0/12</span></div>
-      <div id="ach" class="ach"></div>
-    </section>
-  </section>
-
-  <section id="progress" class="screen">
-    <section class="card">
-      <div class="head"><h2>Progress</h2><span>Last 30 days</span></div>
-      <div id="history" class="history"></div>
-    </section>
-    <section class="card">
-      <div class="head"><h2>Quest History</h2><span id="historySummary">0 completed</span></div>
-      <div id="questHistory" class="history-list"></div>
-    </section>
-    <section class="card">
-      <div class="head"><h2>Data Backup</h2><span>Keep your progress safe</span></div>
-      <p>Export your AWAKEN progress as a file. Import it later if you change phones or browsers.</p>
-      <div class="buttonrow">
-        <button class="primary" id="exportBtn">Export Progress</button>
-        <label class="secondary filebtn">Import Progress<input type="file" id="importFile" accept="application/json"></label>
-      </div>
-    </section>
-  </section>
-
-  <section id="rewards" class="screen">
-    <section class="card">
-      <div class="head"><h2>Reward Shop</h2><span>Coins: <b id="shopCoins">0</b></span></div>
-      <p>Turn your effort into small, healthy rewards you choose for yourself.</p>
-      <div id="rewardsList" class="reward-grid"></div>
-      <button class="smallbtn" id="addReward">+ Add Reward</button>
-    </section>
-    <section class="card">
-      <div class="head"><h2>Unlocked Rewards</h2><span id="unlockedCount">0</span></div>
-      <div id="unlocked"></div>
-    </section>
-  </section>
-
-  <section id="settings" class="screen">
-    <section class="card">
-      <div class="head"><h2>AWAKEN Settings</h2></div>
-      <p>V5 keeps your progress in this browser using local storage. Nothing needs an account.</p>
-      <div class="setting"><span>Notifications</span><span class="muted">Coming later</span></div>
-      <div class="setting"><span>Cloud sync</span><span class="muted">Coming later</span></div>
-      <div class="setting"><span>Installable app</span><span class="muted">PWA enabled</span></div>
-    </section>
-  </section>
-</main>
-
-<nav class="nav">
-  <button class="navbtn active" data-screen="home">⌂<span>Home</span></button>
-  <button class="navbtn" data-screen="character">◈<span>Character</span></button>
-  <button class="navbtn" data-screen="progress">◴<span>Progress</span></button>
-  <button class="navbtn" data-screen="rewards">★<span>Rewards</span></button>
-  <button class="navbtn" data-screen="settings">⚙<span>Settings</span></button>
+<main id="screen"></main>
+<nav class="nav" aria-label="Main navigation">
+  <button data-nav="home">⌂<span>Home</span></button>
+  <button data-nav="character">◈<span>Character</span></button>
+  <button data-nav="progress">◒<span>Progress</span></button>
+  <button data-nav="rewards">◇<span>Rewards</span></button>
+  <button data-nav="more">☷<span>More</span></button>
 </nav>
-
-<div id="toast"></div>
+</div>
+<div id="modal" class="modal hidden"></div>
+<div id="toast" class="toast"></div>
 <script src="app.js"></script>
 </body>
 </html>
